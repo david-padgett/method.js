@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<!-- annotations.js/src/test/html/annotations.html -->
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+	<head>
+		<title>method.js - Unit Tests</title>
+		<meta http-equiv="Content-Type" content="application/xhtml+xml; charset=utf-8"/>
+		<link rel="stylesheet" title="Standard Style" href="/css/method.css" media="screen" type="text/css"/>
+	</head>
+
+	<body>
+
+		<script type="text/javascript" src="/javascript/method.js"></script>
+		<script type="text/javascript" src="/javascript/annotations.js"></script>
+		<script type="text/javascript" src="/javascript/testpilot.js"></script>
+
+		<script type="text/javascript">
+			var rootNamespace = this;
+			var testPilot = new TestPilot(rootNamespace, "$");
+			var method = new Method(rootNamespace);
+		</script>
+
+		<div id="header">
+			<h1>method.js - Unit Tests</h1>
+		</div>
+
+		<div id="results">
+			<h1>TestPilot Report</h1>
+		</div>
+
+		<script type="text/javascript" src="/javascript/method-unit-tests.js"></script>
+
+		<script type="text/javascript">
+			testPilot.runUnitTests();
+			document.write("<pre>" + testPilot.getReport() + "</pre>");
+		</script>
+
+		<script type="text/javascript" src="/javascript/method-classes.js"></script>
+
+	</body>
+
+</html>

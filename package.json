@@ -1,0 +1,21 @@
+{
+  "name": "method.js",
+  "version": "0.5.0",
+  "description": "method.js - Create namespaces, types, interfaces, and overloaded type operations in JavaScript.",
+  "main": "dist/method-node.js",
+	"scripts": {
+		"test": "make -f method.mak test"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git://github.com/david-padgett/method.js"
+	},
+	"keywords": [
+		"JavaScript framework", "JavaScript namespaces", "JavaScript types", "JavaScript interfaces", "JavaScript function overloading", "Extreme JavaScript", "Scalable JavaScript"
+	],
+	"author": "David Padgett <david@summitstreet.biz> (http://summitstreet.biz/)",
+	"license": "MIT",
+	"bugs": {
+		"url": "https://github.com/david-padgett/method.js/issues"
+	}
+}
