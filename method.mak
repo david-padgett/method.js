@@ -21,45 +21,63 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-# method.js/method.mak
+#** makestuff/src/global/init_rule.mak
 
-MAKEFILE_DIR=node_modules/etc.mak/dist
+REPO_DIR=.makestuff
+MAKESTUFF_REPO=github.com/SummitStreet/makestuff@master.git
+MAKESTUFF=$(shell python -c 'import os, re, sys ; R, V = re.match(r"(.+?)(@.*)?.git", sys.argv[2]).groups() ; print os.sep.join([sys.argv[1], R, V[1:]])' $(REPO_DIR) $(MAKESTUFF_REPO))
 
-include $(MAKEFILE_DIR)/javascript_vars.mak
+# The default target is 'all'.
+
+all :
+
+### Initialize/bootstrap makestuff environment
+### usage: make [-f <makefile>] init [REPO_DIR=<external_repo_base_directory>]
+
+makestuff_init :
+	@rm -fr $(MAKESTUFF)
+	@python -c 'import os, re, sys ; C = "git clone --branch {1} https://{0}.git {2}" ; R, V = re.match(r"(.+?)(@.*)?.git", sys.argv[2]).groups() ; D = os.sep.join([sys.argv[1], R, V[1:]]) ; None if os.path.isdir(D) else os.system(C.format(R, V[1:], D))' $(REPO_DIR) $(MAKESTUFF_REPO) >/dev/null 2>/dev/null
+	@rm -fr $(REPO_DIR)/.tmp ; mv $(MAKESTUFF)/dist $(REPO_DIR)/.tmp ; rm -fr $(MAKESTUFF) ; mv $(REPO_DIR)/.tmp $(MAKESTUFF)
+
+.PHONY : all makestuff_init
+
+-include $(MAKESTUFF)/javascript_vars.mak
 
 BUILD_DEPENDENCIES=\
-	github.com/david-padgett/annotations.js.git \
-	github.com/david-padgett/testpilot.js.git
+	github.com/david-padgett/annotations.js.git.npm \
+	github.com/david-padgett/testpilot.js.git.npm \
+	github.com/SummitStreet/launchpad.git
 
 BUILD_TARGETS=\
-	method.js \
-	method-node.js
+	$(DIST_DIR)/method.js \
+	$(DIST_DIR)/method-node.js
 
-TEST_TARGETS=\
-	method-node-tests.js
+JAVASCRIPT_TEST_COMPONENTS=\
+	$(DIST_DIR)/method-node-tests.js
 
-method.js : \
-	$(SOURCE_DIR)/main/javascript/method.js
+$(DIST_DIR)/method.js : \
+	$(REPO_DIR)/github.com/SummitStreet/launchpad/master/javascript/service.js \
+	$(SRC_DIR)/main/javascript/method.js
 
-method-node.js : \
-	$(SOURCE_DIR)/main/javascript/method-node-prefix.js \
-	$(SOURCE_DIR)/main/javascript/method.js \
-	$(SOURCE_DIR)/main/javascript/method-node-suffix.js
+$(DIST_DIR)/method-node.js : \
+	$(SRC_DIR)/main/javascript/method-node-prefix.js \
+	$(REPO_DIR)/github.com/SummitStreet/launchpad/master/javascript/service.js \
+	$(SRC_DIR)/main/javascript/method.js \
+	$(SRC_DIR)/main/javascript/method-node-suffix.js
 
-method-node-tests.js : \
-	$(SOURCE_DIR)/test/javascript/node-prefix.js \
-	$(SOURCE_DIR)/test/javascript/method-00-initialize.js \
-	$(SOURCE_DIR)/test/javascript/method-01-namespace.js \
-	$(SOURCE_DIR)/test/javascript/method-02-type.js \
-	$(SOURCE_DIR)/test/javascript/method-03-operation.js \
-	$(SOURCE_DIR)/test/javascript/method-04-interface.js \
-	$(SOURCE_DIR)/test/javascript/method-05-constructor.js \
-	$(SOURCE_DIR)/test/javascript/method-06-initializer.js \
-	$(SOURCE_DIR)/test/javascript/method-07-inheritance.js \
-	$(SOURCE_DIR)/test/javascript/method-08-super.js \
-	$(SOURCE_DIR)/test/javascript/method-09-modifiers.js \
-	$(SOURCE_DIR)/test/javascript/method-10-this.js \
-	$(SOURCE_DIR)/test/javascript/method-20-README.md.js \
-	$(SOURCE_DIR)/test/javascript/node-suffix.js
+$(DIST_DIR)/method-node-tests.js : \
+	$(SRC_DIR)/test/javascript/node-prefix.js \
+	$(SRC_DIR)/test/javascript/method-00-initialize.js \
+	$(SRC_DIR)/test/javascript/method-01-namespace.js \
+	$(SRC_DIR)/test/javascript/method-02-type.js \
+	$(SRC_DIR)/test/javascript/method-03-operation.js \
+	$(SRC_DIR)/test/javascript/method-04-interface.js \
+	$(SRC_DIR)/test/javascript/method-05-constructor.js \
+	$(SRC_DIR)/test/javascript/method-06-initializer.js \
+	$(SRC_DIR)/test/javascript/method-07-inheritance.js \
+	$(SRC_DIR)/test/javascript/method-08-super.js \
+	$(SRC_DIR)/test/javascript/method-09-modifiers.js \
+	$(SRC_DIR)/test/javascript/method-10-this.js \
+	$(SRC_DIR)/test/javascript/node-suffix.js
 
-include $(MAKEFILE_DIR)/javascript_rules.mak
+-include $(MAKESTUFF)/javascript_rules.mak

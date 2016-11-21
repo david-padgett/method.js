@@ -1,0 +1,14 @@
+
+{
+	"group" : "david-padgett",
+	"name" : "method.js",
+	"version" : "1.2.0",
+	"description" : "method.js - Create namespaces, types, interfaces, and overloaded type operations in JavaScript.",
+	"url" : "https://github.com/david-padgett/method.js",
+	"components" : [
+		"dist/method.js",
+		"dist/method-node.js"
+	],
+	"dependencies" : [
+	]
+}

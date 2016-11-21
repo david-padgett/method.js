@@ -1,4 +1,4 @@
-// testpilot.js/src/test/javascript/method-02-type.js
+// method.js/src/test/javascript/method-02-type.js
 
 $UnitTest("method - type unit tests");
 function Method_Type() {
@@ -6,29 +6,22 @@ function Method_Type() {
 	$BeforeClass("create the test namespace");
 	this.beforeClass = function() {
 		$AssertEquals(method.$method().__namespaces.length, 2, "method has 2 namespaces: " + method.$method().__namespaces.length);
-
-		test = method.createNamespace();
-
+		global.test = method.createNamespace();
 		$AssertEquals(test.$method().__getName(), "test", "test namespace has correct name : " + test.$method().__getName());
 		$AssertEquals(method.$method().__namespaces.length, 3, "method has 3 namespaces: " + method.$method().__namespaces.length);
-//check # of defined types
-	}
+	};
 
 	$AfterClass("destroy the test namespace");
 	this.afterClass = function() {
-//check # of defined types
-
 		test.$method().__delete();
-
 		$Error(function() {
-
-			var obj = test;
-
+			if (test) {
+				(function() {
+				})();
+			}
 		}, new ReferenceError("test is not defined"), "new namespace is no longer valid");
-
 		$AssertEquals(method.$method().__namespaces.length, 2, "method has 2 namespaces: " + method.$method().__namespaces.length);
-//check # of defined types
-	}
+	};
 
 	$Before();
 	this.before = function() {
@@ -41,7 +34,6 @@ function Method_Type() {
 	$Test("create the type 'test.type'");
 	this.simpleType = function() {
 		test.type = method.createType($PUBLIC, []);
-
 		$AssertEquals(test.type.name, "__MethodType", "new type has the correct constructor");
 		$AssertEquals(test.type, test.type.$method().__object, "new type __object is type");
 		$AssertNotNull(test.type.$method(), "new type is a namespace");
@@ -61,9 +53,7 @@ function Method_Type() {
 	$Test("create an instance of the type 'test.type'");
 	this.instantiateType = function() {
 		$AssertEquals(test.type.$method().__getName(), "test.type", "type named 'test.type' exists");
-
 		var obj = new test.type();
-
 		$AssertNotNull(obj, "instance of new type is not null");
 		$AssertIdentical(test.type, obj.constructor, "constructor of instance of new type is type");
 	};
@@ -71,7 +61,6 @@ function Method_Type() {
 	$Test("create an instance of the type 'test.type'");
 	this.instantiateVia$new = function() {
 		var obj = test.type.$new();
-
 		$AssertNotNull(obj, "instance of new type is not null");
 		$AssertIdentical(test.type, obj.constructor, "constructor of instance of new type is type");
 	};
@@ -79,7 +68,6 @@ function Method_Type() {
 	$Test("create a subclass of 'test.type' named 'test.subclass'");
 	this.subclass = function() {
 		test.subclass = method.createType($PUBLIC, [test.type]);
-
 		$AssertEquals(test.subclass, test.subclass.$method().__object, "new type __object is type");
 		$AssertNotNull(test.subclass.$method(), "new type is a namespace");
 		$AssertEquals(test.subclass.$method().__getName(), "test.subclass", "new type name is 'test.subclass'");
@@ -90,7 +78,6 @@ function Method_Type() {
 	$Test("create the type 'test.notsubclass' which has no parent class");
 	this.notSubclass = function() {
 		test.notsubclass = method.createType($PUBLIC, []);
-
 		$AssertNotNull(test.notsubclass.$method(), "test.notsubclass", "new type is a namespace");
 		$AssertEquals(test.notsubclass, test.notsubclass.$method().__object, "new type __object is type");
 		$AssertEquals(test.notsubclass.$method().__getName(), "test.notsubclass", "new type name is 'test.notsubclass'");

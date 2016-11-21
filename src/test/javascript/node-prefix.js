@@ -1,8 +1,10 @@
-// testpilot.js/src/test/javascript/node-prefix.js
+"use strict";
 
-// var __Annotations = new (require("annotations.js"))(global);
-// var TestPilot = new (require("testpilot.js"))(global);
+// method.js/src/test/javascript/node-prefix.js
 
-rootNamespace = global;
-var testPilot = new (require("../../testpilot.js/dist/testpilot-node.js"))(rootNamespace, "$");
-method = new (require("./method-node.js"))(rootNamespace);
+/* global method, test, $After, $AfterClass, $AssertEquals, $AssertFalse, $AssertIdentical, $AssertNotEquals, $AssertNotNull, $AssertNull, $AssertTrue, $Before, $BeforeClass, $Error, $RegisterUnitTest, $Test, $UnitTest, $MethodDelete, $MethodNamespace, $CONSTRUCTOR, $INITIALIZER, $PRIVATE, $PROTECTED, $PUBLIC, $STATIC */
+/* eslint-disable no-console */
+
+var __TestPilot = new (require("testpilot.js"))(global);
+var rootNamespace = global;
+global.method = new (require("./method-node.js"))(rootNamespace);

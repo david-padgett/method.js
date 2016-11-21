@@ -1,5 +1,5 @@
-// testpilot.js/src/test/javascript/node-suffix.js
+// method.js/src/test/javascript/node-suffix.js
 
-testPilot.runUnitTests();
-console.log("\n" + testPilot.getReport());
-process.exit(testPilot.getSummary().getUnitTestSummary().failed == 0 ? 0 : 1);
+__TestPilot.runUnitTests();
+console.log("\n" + __TestPilot.getReport());
+process.exit(__TestPilot.getSummary().getUnitTestSummary().failed == 0 ? 0 : 1);

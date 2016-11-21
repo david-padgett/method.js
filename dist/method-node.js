@@ -1,9 +1,11 @@
+// method.js/src/main/javascript/method-node-prefix.js
 
-var Annotations = new (require("../../annotations.js/dist/annotations-node.js"))(global, "$");
-/*
+"use strict";
+
+/**
  * The MIT License (MIT)
  *
- * Copyright (c) 2004 David Padgett/Summit Street, Inc.
+ * Copyright (c) 2016 David Padgett/Summit Street, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -12,8 +14,8 @@ var Annotations = new (require("../../annotations.js/dist/annotations-node.js"))
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
  *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
  *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -24,15 +26,115 @@ var Annotations = new (require("../../annotations.js/dist/annotations-node.js"))
  * SOFTWARE.
  */
 
+/* global */
+/* eslint-disable no-unused-vars */
 
-function Method(rootNamespace, namespacePrefix) {
+/**
+ * This function implements a singleton type (e.g: a service) that can install
+ * named operations into a namespace.  The operation names are optionally
+ * prefixed to prevent collisions with other functions.
+ */
 
+function __Service(rootNamespace, namespacePrefix, serviceDelegate) {
 
 	var __THIS = this;
 	var __ROOT_NAMESPACE = rootNamespace;
 	var __NAMESPACE_PREFIX = namespacePrefix == null ? "$" : namespacePrefix;
-	var __MODULE_PREFIX = __NAMESPACE_PREFIX + this.constructor.name;
-	var __MODULE = new __Module(__THIS);
+	var __SERVICE_MANAGER = new __ServiceManager(serviceDelegate == null ? __THIS : serviceDelegate);
+
+	function __ServiceManager(delegate) {
+
+		this.__delegate = delegate;
+		this.__containers = [];
+
+		this.addToNamespace = function addToNamespace(name, value) {
+			__ROOT_NAMESPACE[name] = value;
+			this.invokeDelegate("addToNamespace");
+		};
+
+		this.invokeDelegate = function(operation) {
+			if (this.__delegate != null && this.__delegate[operation] != null && this.__delegate[operation].constructor === Function) {
+				delegate[operation].apply(delegate, Array.prototype.slice.call(arguments, 1));
+			}
+		};
+
+		this.initializeDispatcher = function(container, api) {
+			var dispatcher = function __ServiceManagerApiDispatcher() {
+				var args = Array.prototype.slice.call(arguments, 0);
+				return (api.apply(container, args));
+			};
+			return (dispatcher);
+		};
+
+		this.install = function install(containers) {
+			this.__containers = this.__containers.concat(containers);
+			this.manageAliases(containers, true);
+			this.invokeDelegate("install");
+		};
+
+		this.manageAliases = function(containers, addFunctions) {
+			for (var i = 0; i < containers.length; ++i) {
+				var container = containers[i];
+				for (var j in container) {
+					if (container[j] != null) {
+						var name = null;
+						var value = null;
+						if (container[j].constructor !== Function && j[0] != "_") {
+							name = __NAMESPACE_PREFIX + j;
+							value = container[j];
+						}
+						else {
+							if (container[j].constructor === Function && container[j].name.length > 0) {
+								var api = container[j];
+								name = __NAMESPACE_PREFIX + container[j].name;
+								value = this.initializeDispatcher(container, api);
+							}
+						}
+						if (name != null && value != null) {
+							if (addFunctions) {
+								this.addToNamespace(name, value);
+							}
+							else {
+								this.removeFromNamespace(name);
+							}
+						}
+					}
+				}
+			}
+		};
+
+		this.removeFromNamespace = function removeFromNamespace(name) {
+			this.invokeDelegate("removeFromNamespace");
+			if (!(delete __ROOT_NAMESPACE[name])) {
+				__ROOT_NAMESPACE[name] = null;
+			}
+		};
+
+		this.uninstall = function uninstall() {
+			this.invokeDelegate("uninstall");
+			this.manageAliases(this.__containers, false);
+		};
+
+		if (__ROOT_NAMESPACE == null) {
+			throw new Error("Unable to initialize " + __THIS.constructor.name + ": No root namespace provided when instantiated.");
+		}
+
+	}
+
+	this._getServiceManager = function() {
+		return (__SERVICE_MANAGER);
+	};
+
+	__SERVICE_MANAGER.install([__THIS]);
+	return (__THIS);
+}
+
+function Method(rootNamespace, namespacePrefix) {
+
+	var __THIS = this;
+	var __ROOT_NAMESPACE = rootNamespace;
+	var __NAMESPACE_PREFIX = namespacePrefix == null ? "$" : namespacePrefix;
+	var __SERVICE_PREFIX = __NAMESPACE_PREFIX + this.constructor.name;
 
 	var __INITIALIZER_PREFIX = "$";
 	var __OVERRIDABLE_API_NAMES = ["toString"];
@@ -41,12 +143,9 @@ function Method(rootNamespace, namespacePrefix) {
 	var __ABSTRACT = 0x0001;
 	var __STATIC = 0x0002;
 	var __FINAL = 0x0004;
-	var __CONSTRUCT_MODIFIERS = 0x0007;
 	var __PUBLIC = 0x0010;
 	var __PROTECTED = 0x0020;
 	var __PRIVATE = 0x0040;
-	var __ACCESS_LEVEL_MODIFIERS = 0x0070;
-	var __MODIFIERS = __CONSTRUCT_MODIFIERS | __ACCESS_LEVEL_MODIFIERS;
 
 	var __CONSTRUCTOR = 0x0100;
 	var __INITIALIZER = 0x0200;
@@ -72,7 +171,6 @@ function Method(rootNamespace, namespacePrefix) {
 		CLASS: __CLASS,
 		INTERFACE: __INTERFACE
 	};
-
 
 	function __getType(object) {
 		if (object == null) {
@@ -108,143 +206,38 @@ function Method(rootNamespace, namespacePrefix) {
 			types[i] = __getType(objects[i]);
 		}
 		return (types);
-	};
+	}
 
 	function __hasContext(object) {
-		return (object != null && object[__MODULE_PREFIX] != null);
-	};
+		return (object != null && object[__SERVICE_PREFIX] != null);
+	}
 
 	function __isAssignableFrom(type, compatibleType) {
 		type = __getType(type);
 		return (type === compatibleType || type === Object || (__hasContext(type) && type.$method().__isAssignableFrom(compatibleType)));
-	};
+	}
 
 	function __isValidType(type) {
 		return (__hasContext(type) && type.$method().__object == type);
-	};
-
-
-	function __Module(delegate) {
-
-
-
-
-
-		this.__delegate = delegate;
-		this.__containers = [];
-
-
-
-
-		this.addToNamespace = function addToNamespace(name, value) {
-			__ROOT_NAMESPACE[name] = value;
-			this.invokeDelegate(arguments.callee.name);
-		};
-
-
-		this.invokeDelegate = function(operation) {
-			if (this.__delegate != null && this.__delegate[operation] != null && this.__delegate[operation].constructor === Function) {
-				delegate[operation].apply(delegate, Array.prototype.slice.call(arguments, 1));
-			}
-		}
-
-
-		this.initializeDispatcher = function(container, api) {
-			var dispatcher = function __ModuleApiDispatcher() {
-				var args = Array.prototype.slice.call(arguments, 0);
-				return (api.apply(container, args));
-			};
-			return (dispatcher);
-		};
-
-
-		this.install = function install(containers) {
-			this.__containers = containers;
-			this.manageAliases(this.__containers, true);
-			this.invokeDelegate(arguments.callee.name);
-		};
-
-
-		this.manageAliases = function(containers, addFunctions) {
-			for (var i = 0; i < containers.length; ++i) {
-				var container = containers[i];
-				for (var j in container) {
-					if (container[j] != null) {
-						var name = null;
-						var value = null;
-						if (container[j].constructor !== Function && j[0] != "_") {
-							name = __NAMESPACE_PREFIX + j;
-							value = container[j];
-						}
-						else {
-							if (container[j].constructor === Function && container[j].name.length > 0) {
-								var api = container[j];
-								var name = __NAMESPACE_PREFIX + container[j].name;
-								value = this.initializeDispatcher(container, api);
-							}
-						}
-						if (name != null && value != null) {
-							if (addFunctions) {
-								this.addToNamespace(name, value);
-							}
-							else {
-								this.removeFromNamespace(name);
-							}
-						}
-					}
-				}
-			}
-		};
-
-
-		this.removeFromNamespace = function removeFromNamespace(name) {
-			this.invokeDelegate(arguments.callee.name);
-			if (!(delete __ROOT_NAMESPACE[name])) {
-				__ROOT_NAMESPACE[name] = null;
-			}
-		};
-
-
-		this.uninstall = function uninstall() {
-			this.invokeDelegate(arguments.callee.name);
-			this.manageAliases(this.__containers, false);
-		};
-
-
-		if (__ROOT_NAMESPACE == null) {
-			throw new Error("Unable to initialize " + __THIS.constructor.name + ": No root namespace provided when instantiated.");
-		}
-
 	}
 
 	function __Object(object) {
 
-
 		var __SELF = this;
-
-
-
 
 		this.__object = object;
 		this.__superInvocation = 0;
-
-
 
 		this.__object.$method = function() {
 			return (__SELF);
 		};
 
-
 	}
 
 	function __Construct(object) {
 
-
 		var __NAME_DELIMITER = ".";
 		var __SELF = this;
-
-
-
 
 		this.__id = ++__Construct.__id;
 		this.__object = object;
@@ -252,8 +245,6 @@ function Method(rootNamespace, namespacePrefix) {
 		this.__children = [];
 		this.__relativeName = null;
 		this.__name = null;
-
-
 
 		this.__bind = function() {
 			if (this.__parent == null) {
@@ -271,7 +262,7 @@ function Method(rootNamespace, namespacePrefix) {
 								else {
 									if (!(delete this.__parent[j])) {
 										this.__parent[j] = null;
-									};
+									}
 									this.__parent[this.__relativeName] = this.__object;
 								}
 								return;
@@ -288,8 +279,9 @@ function Method(rootNamespace, namespacePrefix) {
 				this.__children[0].$method().__delete();
 			}
 
+			var index = null;
 			if (this.__parent != null) {
-				var index = this.__parent.$method().__children.indexOf(this.__object);
+				index = this.__parent.$method().__children.indexOf(this.__object);
 				if (index != -1) {
 					this.__parent.$method().__children.splice(index, 1);
 				}
@@ -298,7 +290,7 @@ function Method(rootNamespace, namespacePrefix) {
 				}
 			}
 
-			var index = __Construct.__cache.indexOf(this.__object);
+			index = __Construct.__cache.indexOf(this.__object);
 			if (index != -1) {
 				__Construct.__cache.splice(index, 1);
 			}
@@ -342,12 +334,10 @@ function Method(rootNamespace, namespacePrefix) {
 			this.__parent = parent;
 		};
 
-
 		this.__object.$method = function() {
 			__SELF.__bind();
 			return (__SELF);
-		}
-
+		};
 
 		__Construct.__cache.push(this.__object);
 	}
@@ -374,43 +364,35 @@ function Method(rootNamespace, namespacePrefix) {
 
 	};
 
-
 	function __Function(fn, attributes) {
-
-
-
-
 
 		this.__attributes = attributes;
 
-
 		__Construct.apply(this, [fn]);
 
-
 		this.__isAbstract = function() {
-			return ((this.__attributes & __ABSTRACT) != 0)
-		}
+			return ((this.__attributes & __ABSTRACT) != 0);
+		};
 
 		this.__isFinal = function() {
-			return ((this.__attributes & __FINAL) != 0)
-		}
+			return ((this.__attributes & __FINAL) != 0);
+		};
 
 		this.__isPrivate = function() {
-			return ((this.__attributes & __PRIVATE) != 0)
-		}
+			return ((this.__attributes & __PRIVATE) != 0);
+		};
 
 		this.__isProtected = function() {
-			return ((this.__attributes & __PROTECTED) != 0)
-		}
+			return ((this.__attributes & __PROTECTED) != 0);
+		};
 
 		this.__isPublic = function() {
-			return ((this.__attributes & __PUBLIC) != 0)
-		}
+			return ((this.__attributes & __PUBLIC) != 0);
+		};
 
 		this.__isStatic = function() {
-			return ((this.__attributes & __STATIC) != 0)
-		}
-
+			return ((this.__attributes & __STATIC) != 0);
+		};
 
 	}
 
@@ -420,16 +402,9 @@ function Method(rootNamespace, namespacePrefix) {
 			str += this.__attributes & __ATTRIBUTES[i] ? (str.length > 0 ? ", " : "") + __ATTRIBUTE_DESCRIPTIONS[i] : "";
 		}
 		return ("<" + str + "> " + __Construct.prototype.toString.apply(this, []));
-	}
+	};
 
 	function __Namespace(ns, name) {
-
-
-
-
-
-
-
 
 		if (name != null && !/[0-9A-Za-z_]+$/g.test(name)) {
 			throw new Error("Namespace name is invalid: " + name);
@@ -453,12 +428,9 @@ function Method(rootNamespace, namespacePrefix) {
 		return (ns);
 	};
 
-
-	function __Type(methodType, attributes, parentTypes) {
-
+	function __Type(methodType, attributes) {
 
 		var __SELF = this;
-
 
 		function __getOperationName(attributes) {
 			var operationName = __SELF.__getRelativeName();
@@ -466,17 +438,13 @@ function Method(rootNamespace, namespacePrefix) {
 				operationName = __INITIALIZER_PREFIX + operationName;
 			}
 			return (operationName);
-		};
-
-
+		}
 
 		this.__superclass = null;
 		this.__initialized = false;
 		this.__interfaces = [];
 
-
 		__Function.apply(this, [methodType, attributes]);
-
 
 		this.__addOperation = function(operationName, attributes, returnType, parameterTypes, implementation) {
 
@@ -502,7 +470,7 @@ function Method(rootNamespace, namespacePrefix) {
 			}
 
 			if (operation == null || operation === __Type.__PSEUDO_OPERATION) {
-				var operation = new __Operation(operationName, returnType, attributes & __OPERATION_FLAGS);
+				operation = new __Operation(operationName, returnType, attributes & __OPERATION_FLAGS);
 				operation.__link(this.__object);
 				var virtualMethodTable = attributes & __STATIC ? this.__object : this.__object.prototype;
 				virtualMethodTable[operation.__getRelativeName()] = operation.__object;
@@ -521,16 +489,13 @@ function Method(rootNamespace, namespacePrefix) {
 				var target = this.__object.prototype;
 				for (var memberName in source) {
 
-
 					var sourceOperation = source[memberName];
 					if (sourceOperation.constructor === Function && (target[memberName] == null || __OVERRIDABLE_API_NAMES.indexOf(memberName) != -1)) {
-
 
 						if (sourceOperation.name != "__MethodOperation") {
 							target[memberName] = sourceOperation;
 						}
 						else {
-
 
 							var operation = sourceOperation.$method();
 							if (!(operation.__attributes & __SPECIAL_OPERATION_FLAGS)) {
@@ -547,13 +512,11 @@ function Method(rootNamespace, namespacePrefix) {
 
 		this.__extendType = function(parentType) {
 
-
 			if (parentType == null || parentType.$method() == null) {
 				throw new Error("The type " + this.__getName() + " cannot extend null.");
 			}
 
 			if (parentType.$method().__isInterface()) {
-
 
 				if (this.__interfaces.indexOf(parentType) == -1) {
 					this.__interfaces.push(parentType);
@@ -561,13 +524,11 @@ function Method(rootNamespace, namespacePrefix) {
 			}
 			else {
 
-
 				if (this.__superclass != null) {
 					throw new Error("The type " + this.__getName() + " already extends " + this.__superclass.__getName() + ".");
 				}
 				this.__superclass = parentType;
 			}
-
 
 			this.__copyOperations(parentType);
 		};
@@ -577,7 +538,6 @@ function Method(rootNamespace, namespacePrefix) {
 		};
 
 		this.__getInterfaces = function() {
-
 
 			var interfaces = Array.prototype.slice.call(this.__interfaces);
 			for (var parentType = this.__superclass; parentType != null; parentType = parentType.__superclass) {
@@ -639,7 +599,7 @@ function Method(rootNamespace, namespacePrefix) {
 
 		this.__queueOperation = function(attributes, returnType, parameterTypes) {
 			var cache = {};
- 			__Type.__MODIFIED_TYPES.push([this, attributes, returnType, parameterTypes != null ? parameterTypes : [], cache]);
+			__Type.__MODIFIED_TYPES.push([this, attributes, returnType, parameterTypes != null ? parameterTypes : [], cache]);
 			return (cache);
 		};
 
@@ -656,9 +616,11 @@ function Method(rootNamespace, namespacePrefix) {
 		this.__object.$new = function() {
 			this.$method().__bind();
 			var type = this;
+			arguments.__$new = true;
 			var newInstance = new type(arguments);
+			delete arguments.__$new;
 			return (newInstance);
-		}
+		};
 
 		this.__object.$prototype = function(attributes, returnType, parameterTypes) {
 			this.$method().__bind();
@@ -684,8 +646,7 @@ function Method(rootNamespace, namespacePrefix) {
 			return (__SELF.__object.$prototype(attributes, returnType, parameterTypes));
 		};
 
-
-	};
+	}
 
 	__Type.__TYPES = [];
 	__Type.__MODIFIED_TYPES = [];
@@ -709,7 +670,6 @@ function Method(rootNamespace, namespacePrefix) {
 
 		__Type.__bindOperations();
 
-
 		var methodType = function __MethodType() {
 			var context = this.constructor.$method();
 			__Type.__bindOperations();
@@ -724,17 +684,15 @@ function Method(rootNamespace, namespacePrefix) {
 
 			__Object.apply({}, [this]);
 			context.__getOperation(null, __INITIALIZER).__invoke(this, []);
-			var args = Array.prototype.slice.call(arguments.length == 1 && arguments[0].callee != null ? arguments[0] : arguments);
+			var args = Array.prototype.slice.call(arguments.length == 1 && arguments[0].__$new == true ? arguments[0] : arguments);
 			context.__getOperation(null, __CONSTRUCTOR).__invoke(this, args);
-		}
+		};
 
 		__Type.apply({}, [methodType, attributes, parentTypes]);
-
 
 		for (var i = 0; i < parentTypes.length; ++i) {
 			methodType.$method().__extendType(parentTypes[i]);
 		}
-
 
 		__Type.__TYPES.push(methodType);
 		return (methodType);
@@ -742,22 +700,16 @@ function Method(rootNamespace, namespacePrefix) {
 
 	function __Operation(name, returnType, attributes) {
 
-
 		var __SELF = this;
-
 
 		function __MethodOperation() {
 			return (__SELF.__invoke(this, Array.prototype.slice.call(arguments)));
 		}
 
-
-
 		this.__returnType = returnType;
-
 
 		__Function.apply(this, [__MethodOperation, attributes & __OPERATION_FLAGS]);
 		this.__relativeName = name;
-
 
 		this.__addImplementation = function(attributes, parameterTypes, implementation) {
 			var previoiusImplementation = this.__getImplementation(parameterTypes);
@@ -793,8 +745,7 @@ function Method(rootNamespace, namespacePrefix) {
 			__Type.__bindOperations();
 			var operation = this;
 
-
-			var superInvocation = object.$method == null ? 0 : object.$method().__superInvocation;
+			var superInvocation = object == null || object.$method == null ? 0 : object.$method().__superInvocation;
 			if (superInvocation > 0) {
 				var type = this.__parent.$method().__superclass;
 				for (var i = 1; i < superInvocation; ++i) {
@@ -803,13 +754,11 @@ function Method(rootNamespace, namespacePrefix) {
 				operation = type.$method().__getOperation(this.__relativeName, this.__attributes);
 			}
 
-
 			var parameterTypes = __getTypes(parameters);
 			var implementation = operation.__getImplementation(parameterTypes);
 			if (implementation == null) {
 				operation.__invocationError(parameterTypes);
 			}
-
 
 			var result = implementation.__invoke(object, parameters);
 			if (superInvocation > 0) {
@@ -822,20 +771,15 @@ function Method(rootNamespace, namespacePrefix) {
 
 		this.toString = function() {
 			return ("(" + this.__returnType.name + ") ");
-		}
-
+		};
 
 	}
 
-
 	function __Implementation(attributes, parameterTypes, implementation) {
-
 
 		var __SELF = this;
 
-
 		function __finalizeParameters(parameters) {
-
 
 			for (var i = 0; i < __SELF.__parameterTypes.length; ++i) {
 				var parameter = __SELF.__parameterTypes[i];
@@ -844,27 +788,21 @@ function Method(rootNamespace, namespacePrefix) {
 			return (parameters);
 		}
 
-
 		function __MethodImplementation(implementation) {
-
 
 			this.__implementation = implementation;
 		}
 
-
 		this.__parameterTypes = parameterTypes;
 		this.__parameterTypeNames = "";
 
-
 		__Function.apply(this, [new __MethodImplementation(implementation), attributes]);
-
 
 		this.__invoke = function(object, parameters) {
 
 			if (this.__attributes & __ABSTRACT) {
 				throw new Error("The abstract operation " + __SELF.__parent.$method().__getName() + "(" + __SELF.__parameterTypeNames + ") is not implemented.");
 			}
-
 
 			parameters = __finalizeParameters(parameters);
 			var result = this.__object.__implementation.apply(object, parameters);
@@ -892,19 +830,15 @@ function Method(rootNamespace, namespacePrefix) {
 			return ("(" + this.__parameterTypeNames + ")");
 		};
 
-
 		if (this.__parameterTypes.indexOf(null) != -1) {
-			throw new Error("Null parameter types are not permitted within operation implementations.")
+			throw new Error("Null parameter types are not permitted within operation implementations.");
 		}
 		this.__parameterTypeNames = __getTypeNames(this.__parameterTypes);
 	}
 
-
-
-
 	this.createInterface = function MethodInterface(attributes, parentTypes) {
 		return (__Type.__create((attributes & ~__CLASS) | __INTERFACE, parentTypes));
-	}
+	};
 
 	this.createNamespace = function MethodNamespace(nameOrNamespace) {
 		return (__Namespace.__create(nameOrNamespace));
@@ -912,7 +846,7 @@ function Method(rootNamespace, namespacePrefix) {
 
 	this.createType = function MethodType(attributes, parentTypes) {
 		return (__Type.__create((attributes & ~__INTERFACE) | __CLASS, parentTypes));
-	}
+	};
 
 	this.delete = function MethodDelete(object) {
 		__Construct.__bind();
@@ -926,11 +860,13 @@ function Method(rootNamespace, namespacePrefix) {
 		return (type === Object || type === compatibleType || (__hasContext(type) && type.$method().__isAssignableFrom(compatibleType)));
 	};
 
+	__Service.apply(this, [rootNamespace, namespacePrefix]);
 
-	__MODULE.install([__THIS, __Modifiers]);
+	this._getServiceManager().install([__Modifiers]);
 	__Construct.__create(__ROOT_NAMESPACE);
-	__Construct.__create(this);
+	__Construct.__create(__THIS);
 	this.$method().__namespaces = __Construct.__cache;
 }
 
 module.exports = Method;
+

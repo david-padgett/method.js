@@ -1,4 +1,4 @@
 .DS_Store
-__archive
+_*
 node_modules
 .makestuff
